@@ -1,4 +1,4 @@
-name: Build ESP32-S3 Firmware
+name: Build ESP32-S3
 
 on:
   workflow_dispatch:
@@ -9,22 +9,14 @@ jobs:
     container: espressif/idf:latest
 
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Set up ESP-IDF environment
-        run: |
-          echo "Activating ESP-IDF..."
-          . $IDF_PATH/export.sh
 
       - name: Build firmware
         run: |
-          cd examples/hello_world
-          idf.py set-target esp32s3
-          idf.py fullclean   # optional but avoids old build issues
-          idf.py build
+          bash -c "source $IDF_PATH/export.sh && cd examples/hello_world && idf.py set-target esp32s3 && idf.py build"
 
-      - name: Upload firmware artifacts
+      - name: Upload firmware
         uses: actions/upload-artifact@v4
         with:
           name: firmware
