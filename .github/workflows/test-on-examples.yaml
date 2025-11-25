@@ -1,4 +1,4 @@
-name: Build ESP32-S3 Firmware
+name: Build ESP32-S3 Firmware Examples
 
 on:
   workflow_dispatch:
@@ -12,21 +12,33 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Set up ESP-IDF environment
+      - name: Find all example folders
+        id: find_examples
         run: |
-          . $IDF_PATH/export.sh
+          EXAMPLES=$(find examples -mindepth 1 -maxdepth 1 -type d)
+          echo "EXAMPLES=$EXAMPLES" >> $GITHUB_ENV
 
-      - name: Build ESP32-S3 Example
+      - name: Build all ESP32-S3 examples
         run: |
-          # Build directory
-          BUILD_DIR=examples/hello_world/build
-          
-          # Set target and build from repo root
-          idf.py set-target esp32s3 -B $BUILD_DIR examples/hello_world
-          idf.py build -B $BUILD_DIR examples/hello_world
+          . $IDF_PATH/export.sh  # Activate ESP-IDF
+
+          for EXAMPLE in $EXAMPLES; do
+            echo "Building $EXAMPLE ..."
+            idf.py set-target esp32s3 -B $EXAMPLE/build $EXAMPLE
+            idf.py build -B $EXAMPLE/build $EXAMPLE
+          done
+        shell: bash
 
       - name: Upload Firmware Artifacts
+        run: |
+          mkdir -p artifacts
+          for EXAMPLE in $EXAMPLES; do
+            cp $EXAMPLE/build/*.bin artifacts/ || true
+          done
+        shell: bash
+
+      - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: esp32s3_firmware
-          path: examples/hello_world/build/*.bin
+          name: esp32s3_firmware_examples
+          path: artifacts/*.bin
