@@ -9,22 +9,24 @@ jobs:
     container: espressif/idf:latest
 
     steps:
-      # 1️⃣ Checkout your repository
+      # 1️⃣ Checkout repository
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      # 2️⃣ Install ESP-IDF (comes pre-installed in container)
-      # You can skip this because espressif/idf:latest already has it
-
-      # 3️⃣ Set target and build
+      # 2️⃣ Build ESP32-S3 example
       - name: Build ESP32-S3 Hello World
         run: |
           cd examples/hello_world
-          idf.py set-target esp32s3      # ensures build target is ESP32-S3
-          idf.py fullclean               # clean any previous build
-          idf.py build                   # build the project
+          # Activate ESP-IDF environment
+          . $IDF_PATH/export.sh
+          # Set target to ESP32-S3
+          idf.py set-target esp32s3
+          # Clean previous builds
+          idf.py fullclean
+          # Build the project
+          idf.py build
 
-      # 4️⃣ Upload all firmware artifacts
+      # 3️⃣ Upload all firmware artifacts
       - name: Upload Firmware Artifacts
         uses: actions/upload-artifact@v4
         with:
