@@ -1,62 +1,37 @@
-name: Test on Examples
+name: Build ESP32-S3 Firmware
 
 on:
-  pull_request:
   workflow_dispatch:
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
 jobs:
-  trigger-event:
+  build:
     runs-on: ubuntu-latest
+    container: espressif/idf:latest
+
     steps:
-      - name: Trigger build-examples on ${{ vars.TRIGGER_ACTION_REPO }}
+      # 1️⃣ Checkout your repository
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # 2️⃣ Install ESP-IDF (comes pre-installed in container)
+      # You can skip this because espressif/idf:latest already has it
+
+      # 3️⃣ Set target and build
+      - name: Build ESP32-S3 Hello World
         run: |
-          curl -L \
-            -X POST \
-            -H "Authorization: Bearer ${{ secrets.TRIGGER_ACTION_TOKEN }}" \
-            https://api.github.com/repos/${{ vars.TRIGGER_ACTION_REPO }}/dispatches \
-            -d '{"event_type":"build-examples"}'
-      - name: get the latest workflow run
-        run: |
-          # Wait for the event to be processed
-          sleep 10
+          cd examples/hello_world
+          idf.py set-target esp32s3      # ensures build target is ESP32-S3
+          idf.py fullclean               # clean any previous build
+          idf.py build                   # build the project
 
-          # Get the latest workflow run
-          json=$(curl -L \
-              -H "Authorization: Bearer ${{ secrets.TRIGGER_ACTION_TOKEN }}" \
-              -H "Accept: application/vnd.github.v3+json" \
-              "https://api.github.com/repos/${{ vars.TRIGGER_ACTION_REPO }}/actions/runs")
-
-          echo "WORKFLOW_URL=$(echo $json | jq -r '.workflow_runs[0].url')" >> $GITHUB_ENV
-      - name: check the status of the workflow
-        run: |
-          echo "Workflow URL: ${{ env.WORKFLOW_URL }}"
-          for i in {1..30}; do
-            json=$(curl -L \
-                -H "Authorization: Bearer ${{ secrets.TRIGGER_ACTION_TOKEN }}" \
-                -H "Accept: application/vnd.github.v3+json" \
-                ${{ env.WORKFLOW_URL }})
-            WORKFLOW_STATUS=$(echo $json | jq -r '.status')
-            WORKFLOW_CONCLUSION=$(echo $json | jq -r '.conclusion')
-
-            echo "Current status: $WORKFLOW_STATUS, conclusion: $WORKFLOW_CONCLUSION"
-
-            if [ "$WORKFLOW_STATUS" = "completed" ]; then
-              if [ "$WORKFLOW_CONCLUSION" = "success" ]; then
-                echo "Workflow completed successfully!"
-                exit 0
-              else
-                echo "Workflow failed with conclusion: $WORKFLOW_CONCLUSION"
-                exit 1
-              fi
-            fi
-
-            echo "Waiting for workflow to complete... (attempt $i/30)"
-            sleep 20
-          done
-
-          echo "Timeout waiting for workflow to complete"
-          exit 1
+      # 4️⃣ Upload all firmware artifacts
+      - name: Upload Firmware Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: esp32s3_firmware
+          path: |
+            examples/hello_world/build/bootloader/bootloader.bin
+            examples/hello_world/build/partition_table/partition-table.bin
+            examples/hello_world/build/hello_world.bin
+            examples/hello_world/build/flasher_args.json
+            examples/hello_world/build/sdkconfig.json
