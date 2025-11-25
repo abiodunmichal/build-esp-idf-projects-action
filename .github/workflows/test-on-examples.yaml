@@ -12,27 +12,32 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Find all example folders
-        id: find_examples
-        run: |
-          EXAMPLES=$(find examples -mindepth 1 -maxdepth 1 -type d)
-          echo "EXAMPLES=$EXAMPLES" >> $GITHUB_ENV
-
       - name: Build all ESP32-S3 examples
         run: |
           . $IDF_PATH/export.sh  # Activate ESP-IDF
 
-          for EXAMPLE in $EXAMPLES; do
-            echo "Building $EXAMPLE ..."
-            idf.py set-target esp32s3 -B $EXAMPLE/build $EXAMPLE
-            idf.py build -B $EXAMPLE/build $EXAMPLE
+          for EXAMPLE in examples/*; do
+            if [ -d "$EXAMPLE" ]; then
+              echo "Building $EXAMPLE ..."
+              cd $EXAMPLE
+
+              # Create build folder if missing
+              mkdir -p build
+
+              # Set target and build
+              idf.py set-target esp32s3 -B build
+              idf.py fullclean
+              idf.py build -B build
+
+              cd - > /dev/null
+            fi
           done
         shell: bash
 
-      - name: Upload Firmware Artifacts
+      - name: Collect firmware artifacts
         run: |
           mkdir -p artifacts
-          for EXAMPLE in $EXAMPLES; do
+          for EXAMPLE in examples/*; do
             cp $EXAMPLE/build/*.bin artifacts/ || true
           done
         shell: bash
