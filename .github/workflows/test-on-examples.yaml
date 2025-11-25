@@ -9,31 +9,24 @@ jobs:
     container: espressif/idf:latest
 
     steps:
-      # 1️⃣ Checkout repository
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      # 2️⃣ Build ESP32-S3 example
-      - name: Build ESP32-S3 Hello World
+      - name: Set up ESP-IDF environment
         run: |
-          cd examples/hello_world
-          # Activate ESP-IDF environment
           . $IDF_PATH/export.sh
-          # Set target to ESP32-S3
-          idf.py set-target esp32s3
-          # Clean previous builds
-          idf.py fullclean
-          # Build the project
-          idf.py build
 
-      # 3️⃣ Upload all firmware artifacts
+      - name: Build ESP32-S3 Example
+        run: |
+          # Build directory
+          BUILD_DIR=examples/hello_world/build
+          
+          # Set target and build from repo root
+          idf.py set-target esp32s3 -B $BUILD_DIR examples/hello_world
+          idf.py build -B $BUILD_DIR examples/hello_world
+
       - name: Upload Firmware Artifacts
         uses: actions/upload-artifact@v4
         with:
           name: esp32s3_firmware
-          path: |
-            examples/hello_world/build/bootloader/bootloader.bin
-            examples/hello_world/build/partition_table/partition-table.bin
-            examples/hello_world/build/hello_world.bin
-            examples/hello_world/build/flasher_args.json
-            examples/hello_world/build/sdkconfig.json
+          path: examples/hello_world/build/*.bin
